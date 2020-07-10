@@ -106,17 +106,6 @@ im2 = ImageGrab.grab(bbox=(c1x+10, c1y+35, c2x+15, c2y+50))
 im2.save('temp.png')
 
 
-
-class FeatureType(Enum):
-    PAGE = 1
-    BLOCK = 2
-    PARA = 3
-    WORD = 4
-    SYMBOL = 5
-
-
-
-
 def get_document_bounds(image_file, feature):
     """Returns document bounds given an image."""
     client = vision.ImageAnnotatorClient()
@@ -154,10 +143,8 @@ def get_document_bounds(image_file, feature):
 
             width = bound.vertices[2].x - bound.vertices[0].x
             height = bound.vertices[2].y - bound.vertices[0].y
-            s.Pen = wx.Pen("#FF0000")
-            #s.Brush = wx.Brush(wx.Colour(50, 50, 50), style=wx.TRANSPARENT)
 
-            # s.DrawRectangle(ss_x1 + start_x, ss_y1 + start_y, width, height)
+            s.Pen = wx.Pen("#FF0000")
             s.SetTextForeground((255, 0, 0))
             s.SetTextBackground((0, 0, 0))
             s.Brush = wx.Brush(wx.Colour(255,255,255))
@@ -193,34 +180,9 @@ def get_document_bounds(image_file, feature):
 
 
 
-
-
-
-    # Collect specified feature bounds by enumerating all document features
-    for page in document.pages:
-        for block in page.blocks:
-            for paragraph in block.paragraphs:
-                for word in paragraph.words:
-                    for symbol in word.symbols:
-                        if (feature == FeatureType.SYMBOL):
-                            bounds.append(symbol.bounding_box)
-
-                    if (feature == FeatureType.WORD):
-                        bounds.append(word.bounding_box)
-
-                if (feature == FeatureType.PARA):
-                    bounds.append(paragraph.bounding_box)
-
-            if (feature == FeatureType.BLOCK):
-                bounds.append(block.bounding_box)
-
-    # The list `bounds` contains the coordinates of the bounding boxes.
-    return bounds
-
-
 def render_doc_text(filein, fileout):
     image = Image.open(filein)
-    bounds = get_document_bounds(filein, FeatureType.BLOCK)
+    get_document_bounds(filein, FeatureType.BLOCK)
 
 render_doc_text('./temp.png', 0)
 
