@@ -106,7 +106,7 @@ im2 = ImageGrab.grab(bbox=(c1x+10, c1y+35, c2x+15, c2y+50))
 im2.save('temp.png')
 
 
-def get_document_bounds(image_file, feature):
+def get_document_bounds(image_file):
     """Returns document bounds given an image."""
     client = vision.ImageAnnotatorClient()
 
@@ -182,7 +182,7 @@ def get_document_bounds(image_file, feature):
 
 def render_doc_text(filein, fileout):
     image = Image.open(filein)
-    get_document_bounds(filein, FeatureType.BLOCK)
+    get_document_bounds(filein)
 
 render_doc_text('./temp.png', 0)
 
