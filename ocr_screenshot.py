@@ -3,9 +3,13 @@ import MeCab
 from enum import Enum
 import io
 import textwrap
+import time
+from jamdict import Jamdict
+jmd = Jamdict()
 
 from google.cloud import vision
 from google.cloud.vision import types
+from fugashi import Tagger
 from PIL import Image, ImageDraw
 import pyperclip
 
@@ -163,18 +167,33 @@ def recognize_image(image_file, clipboard_buffer):
             ocr_results = "".join(results[-1])
             clipboard_buffer = clipboard_buffer + ocr_results
             clipboard_buffer = clipboard_buffer + "\n"
-            items = kks.convert(ocr_results)
 
-            for item in items:
-                print(
-                    "{}[{}] ".format(item["orig"], item["hepburn"].capitalize()), end=""
-                )
-            print("\n")
-            hepburn_block = ""
-            for item in items:
-                hepburn_block = hepburn_block + " " + item["hepburn"]
+            tagger = Tagger('-Owakati')
+            nl_separated_block = []
+            for word in tagger(ocr_results):
+                if word.char_type == 2:
+                    result = jmd.lookup(str(word))
+                    meaning = ''
+                    for entry in result.entries:
+                        meaning = meaning + '(' + str(entry.senses[0]).split('/')[0] + ')' + ' '
+                    print('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
+                    nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
+            hepburn_block = '\n'.join(nl_separated_block)
 
-            hepburn_block = "\n".join(textwrap.wrap(hepburn_block, 25))
+
+
+            # items = kks.convert(ocr_results)
+            #
+            # for item in items:
+            #     print(
+            #         "{}[{}] ".format(item["orig"], item["hepburn"].capitalize()), end=""
+            #     )
+            # print("\n")
+            # hepburn_block = ""
+            # for item in items:
+            #     hepburn_block = hepburn_block + " " + item["hepburn"]
+            #
+            # hepburn_block = "\n".join(textwrap.wrap(hepburn_block, 25))
             nl_separated_block = hepburn_block.split("\n")
 
             max_x_bound = (
