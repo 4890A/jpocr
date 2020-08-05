@@ -4,6 +4,8 @@ from enum import Enum
 import io
 import textwrap
 import time
+from googletrans import Translator
+
 from jamdict import Jamdict
 jmd = Jamdict()
 
@@ -24,6 +26,10 @@ from PIL import Image, ImageGrab
 import pykakasi
 
 kks = pykakasi.kakasi()
+
+global mode
+mode = 'EOP'
+
 
 global selectionOffset, selectionSize, c1x, c2x, c1y, c2y
 c1x = 0
@@ -79,6 +85,13 @@ class SelectableFrame(wx.Frame):
         self.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
         self.Destroy()
 
+        img = ImageGrab.grab(bbox=(c1x + 10, c1y + 35, c2x + 15, c2y + 50))
+        img.save("temp.png")
+        clipboard_buffer = ""
+        clipboard_buffer = render_doc_text("./temp.png", 0, clipboard_buffer)
+        pyperclip.copy(clipboard_buffer)
+
+
     def OnPaint(self, event):
         global selectionOffset, selectionSize
         global c1x, c2x, c1y, c2y
@@ -102,22 +115,16 @@ class SelectableFrame(wx.Frame):
             str(abs(self.c2.x - self.c1.x)) + "x" + str(abs(self.c2.y - self.c1.y))
         )
 
+
     def PrintPosition(self, pos):
         return str(pos.x) + "x" + str(pos.y)
 
-
-class MyApp(wx.App):
-    def OnInit(self):
-        frame = SelectableFrame()
-
-        return True
 
 
 def recognize_image(image_file, clipboard_buffer):
     """Returns document bounds given an image."""
     client = vision.ImageAnnotatorClient()
 
-    bounds = []
 
     with io.open(image_file, "rb") as image_file:
         content = image_file.read()
@@ -133,6 +140,8 @@ def recognize_image(image_file, clipboard_buffer):
     ss_x2 = c2x + 15
     ss_y1 = c1y + 35
     ss_y2 = c2y + 50
+    global mode
+    print(mode)
 
     for page in document.pages:
         for block in page.blocks:
@@ -157,7 +166,7 @@ def recognize_image(image_file, clipboard_buffer):
 
             s.SetFont(
                 wx.Font(
-                    10,
+                    12,
                     wx.FONTFAMILY_DECORATIVE,
                     wx.FONTSTYLE_NORMAL,
                     wx.FONTWEIGHT_BOLD,
@@ -167,35 +176,42 @@ def recognize_image(image_file, clipboard_buffer):
             ocr_results = "".join(results[-1])
             clipboard_buffer = clipboard_buffer + ocr_results
             clipboard_buffer = clipboard_buffer + "\n"
+            if mode == 'Romaji':
 
-            tagger = Tagger('-Owakati')
-            nl_separated_block = []
-            for word in tagger(ocr_results):
-                if word.char_type == 2:
-                    result = jmd.lookup(str(word))
-                    meaning = ''
-                    for entry in result.entries:
-                        meaning = meaning + '(' + str(entry.senses[0]).split('/')[0] + ')' + ' '
-                    print('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
-                    nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
-            hepburn_block = '\n'.join(nl_separated_block)
+                items = kks.convert(ocr_results)
+
+                for item in items:
+                    print(
+                        "{}[{}] ".format(item["orig"], item["hepburn"].capitalize()), end=""
+                    )
+                print("\n")
+                hepburn_block = ""
+                for item in items:
+                    hepburn_block = hepburn_block + " " + item["hepburn"]
+
+                hepburn_block = "\n".join(textwrap.wrap(hepburn_block, 25))
+
+            if mode == 'Vocab':
+                tagger = Tagger('-Owakati')
+                nl_separated_block = []
+                for word in tagger(ocr_results):
+                    if word.char_type == 2:
+                        result = jmd.lookup(str(word))
+                        meaning = ''
+                        for entry in result.entries:
+                            meaning = meaning + '(' + str(entry.senses[0]).split('/')[0] + ')' + ' '
+                        print('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
+                        nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
+                hepburn_block = '\n'.join(nl_separated_block)
+
+            if mode == 'EOP':
+                translator = Translator()
+                translated = translator.translate(ocr_results).text
+                hepburn_block = "\n".join(textwrap.wrap(translated, 25))
 
 
 
-            # items = kks.convert(ocr_results)
-            #
-            # for item in items:
-            #     print(
-            #         "{}[{}] ".format(item["orig"], item["hepburn"].capitalize()), end=""
-            #     )
-            # print("\n")
-            # hepburn_block = ""
-            # for item in items:
-            #     hepburn_block = hepburn_block + " " + item["hepburn"]
-            #
-            # hepburn_block = "\n".join(textwrap.wrap(hepburn_block, 25))
             nl_separated_block = hepburn_block.split("\n")
-
             max_x_bound = (
                 max([s.GetTextExtent(line)[0] for line in nl_separated_block]) + 3
             )
@@ -216,12 +232,7 @@ def render_doc_text(filein, fileout, clipboard_buffer):
     image = Image.open(filein)
     return recognize_image(filein, clipboard_buffer)
 
-
-app = MyApp(redirect=False)
-app.MainLoop()
-
-img = ImageGrab.grab(bbox=(c1x + 10, c1y + 35, c2x + 15, c2y + 50))
-img.save("temp.png")
-
-clipboard_buffer = render_doc_text("./temp.png", 0, clipboard_buffer)
-pyperclip.copy(clipboard_buffer)
+def ocr_main(window_mode):
+    global mode
+    mode = window_mode
+    ssframe = SelectableFrame()
