@@ -1,24 +1,34 @@
 import io
 import textwrap
 import time
-from googletrans import Translator
 from multiprocessing import Process
 from secrets import deepL_auth
-from jamdict import Jamdict
-jmd = Jamdict()
-
-from google.cloud import vision
-from google.cloud.vision import types
-from fugashi import Tagger
-import pyperclip
-import requests
 
 import wx
 from PIL import Image, ImageGrab
 
 import pykakasi
-
 kks = pykakasi.kakasi()
+
+from jamdict import Jamdict
+jmd = Jamdict()
+from fugashi import Tagger
+
+from googletrans import Translator
+from google.cloud import vision
+from google.cloud.vision import types
+
+import pyperclip
+import requests
+
+from rich import print
+from rich.console import Console
+from rich.progress import track
+console = Console()
+from rich import box
+from rich.style import Style
+
+
 
 global mode
 mode = 'EOP'
@@ -134,10 +144,11 @@ def recognize_image(image_file, clipboard_buffer):
     ss_y1 = c1y + 35
     ss_y2 = c2y + 50
     global mode
-    print(mode)
+
+    console_output = ""
 
     for page in document.pages:
-        for block in page.blocks:
+        for block in track(page.blocks):
             results = []
             results.append([])
             for paragraph in block.paragraphs:
@@ -189,11 +200,11 @@ def recognize_image(image_file, clipboard_buffer):
                 nl_separated_block = []
                 for word in tagger(ocr_results):
                     if word.char_type == 2:
-                        result = jmd.lookup(str(word))
+                        result = jmd.lookup(str(word.feature.lemma))
                         meaning = ''
                         for entry in result.entries:
                             meaning = meaning + '(' + str(entry.senses[0]).split('/')[0] + ')' + ' '
-                        print('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
+                        console_output = console_output + '\t'.join([str(word), '『' + word.feature.kana + '』', meaning, '\n'])
                         nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
                 hepburn_block = '\n'.join(nl_separated_block)
 
@@ -222,7 +233,7 @@ def recognize_image(image_file, clipboard_buffer):
                 ss_x1 + start_x - 3, ss_y1 + start_y - 3, max_x_bound, max_y_bound
             )
             s.DrawText(hepburn_block, ss_x1 + start_x, ss_y1 + start_y)
-
+    console.print(console_output, style='bold red')
     return clipboard_buffer
 
 class screenshotApp(wx.App):

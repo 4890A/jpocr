@@ -43,7 +43,6 @@ class TransparentFrame(wx.Frame):
     def onRadioBox(self, e):
         global mode
         mode = self.rbox.GetStringSelection()
-        print(mode)
 
 
 

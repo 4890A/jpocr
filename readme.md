@@ -1,9 +1,10 @@
+# yomitoru
+
     読み取る
     1. to read and understand; to take in
     2. to read (calibration, tape, etc.); to scan (bar code); to read (out)
 
-# yomitoru 
- A Japanese reading aid built with Google Cloud Vision's OCR
+### A Japanese reading aid built with Google Cloud Vision's OCR
 
 
 ## Usage
