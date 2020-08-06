@@ -1,25 +1,17 @@
-import argparse
-import MeCab
-from enum import Enum
 import io
 import textwrap
 import time
 from googletrans import Translator
 from multiprocessing import Process
-
+from secrets import deepL_auth
 from jamdict import Jamdict
 jmd = Jamdict()
 
 from google.cloud import vision
 from google.cloud.vision import types
 from fugashi import Tagger
-from PIL import Image, ImageDraw
 import pyperclip
-
-import pprint
-
-pp = pprint.PrettyPrinter(depth=6)
-
+import requests
 
 import wx
 from PIL import Image, ImageGrab
@@ -210,7 +202,12 @@ def recognize_image(image_file, clipboard_buffer):
                 translated = translator.translate(ocr_results).text
                 hepburn_block = "\n".join(textwrap.wrap(translated, 25))
 
-
+            if mode == 'DeepL':
+                url = 'https://api.deepl.com/v2/translate'
+                response = requests.get(url, params={"auth_key": deepL_auth, "text": ocr_results, "target_lang": "EN"})
+                result = response.json()
+                translated = result['translations'][0]['text']
+                hepburn_block = "\n".join(textwrap.wrap(translated, 25))
 
             nl_separated_block = hepburn_block.split("\n")
             max_x_bound = (

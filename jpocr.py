@@ -11,7 +11,7 @@ class TransparentFrame(wx.Frame):
     DEFAULT_SIZE = (400, 200)
     TEXTCTRL_SIZE = (200, 100)
     def __init__(self, size=DEFAULT_SIZE, *args, **kwargs):
-        wx.Frame.__init__(self, None, size=size, title='jpocr', style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP, *args, **kwargs)
+        wx.Frame.__init__(self, None, size=size, title='yomeru', style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP, *args, **kwargs)
         # This is all you need to make the window transparent.
         self.SetTransparent(self.DEFAULT_ALPHA)
         # self.SetWindowStyle(wx.STAY_ON_TOP)
