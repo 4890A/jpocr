@@ -5,6 +5,7 @@ import io
 import textwrap
 import time
 from googletrans import Translator
+from multiprocessing import Process
 
 from jamdict import Jamdict
 jmd = Jamdict()
@@ -204,7 +205,7 @@ def recognize_image(image_file, clipboard_buffer):
                         nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
                 hepburn_block = '\n'.join(nl_separated_block)
 
-            if mode == 'EOP':
+            if mode == 'Google':
                 translator = Translator()
                 translated = translator.translate(ocr_results).text
                 hepburn_block = "\n".join(textwrap.wrap(translated, 25))
@@ -227,10 +228,28 @@ def recognize_image(image_file, clipboard_buffer):
 
     return clipboard_buffer
 
+class screenshotApp(wx.App):
+    def OnInit(self):
+        frame = SelectableFrame()
+        return True
 
 def render_doc_text(filein, fileout, clipboard_buffer):
     image = Image.open(filein)
     return recognize_image(filein, clipboard_buffer)
+
+def spawn_ocr_main_process():
+    global mode
+    p = Process(target=ocr_multiprocess, args=('EOP',))
+    p.start()
+    p.join()
+
+def ocr_multiprocess(mode_main_process):
+    global mode
+    mode = mode_main_process
+    app = screenshotApp(redirect=False)
+    app.MainLoop()
+    time.sleep(10)
+
 
 def ocr_main(window_mode):
     global mode
