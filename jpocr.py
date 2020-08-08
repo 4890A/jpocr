@@ -1,7 +1,6 @@
 import wx
 import screenshot_app
 mode = 'Vocab'
-scale = 1
 
 
 class TransparentFrame(wx.Frame):
@@ -13,8 +12,6 @@ class TransparentFrame(wx.Frame):
     def __init__(self, size=DEFAULT_SIZE, *args, **kwargs):
         wx.Frame.__init__(self, None, size=size, title='yomitoru', style=wx.DEFAULT_FRAME_STYLE | wx.STAY_ON_TOP, *args, **kwargs)
         # Find HDPI scale factor
-        global scale
-        scale = wx.GetApp().GetTopWindow().GetContentScaleFactor()
 
         # This is all you need to make the window transparent.
         self.SetTransparent(self.DEFAULT_ALPHA)

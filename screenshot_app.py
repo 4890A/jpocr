@@ -71,10 +71,12 @@ class SelectableFrame(wx.Frame):
         self.Bind(wx.EVT_LEFT_UP, self.OnMouseUp)
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_MENU, self.OnTrans)
+        self.Bind(wx.EVT_KEY_DOWN, self.onKey)
 
         self.SetCursor(wx.Cursor(wx.CURSOR_CROSS))
         self.Show()
         self.transp = False
+        self.scale = wx.GetApp().GetTopWindow().GetContentScaleFactor()
         wx.CallLater(250, self.OnTrans, None)
 
     def OnTrans(self, event):
@@ -84,6 +86,16 @@ class SelectableFrame(wx.Frame):
         else:
             self.SetTransparent(255)
             self.transp = False
+
+    def onKey(self, event):
+        """
+        Check for ESC key press and exit is ESC is pressed
+        """
+        key_code = event.GetKeyCode()
+        if key_code == wx.WXK_ESCAPE:
+            self.Close()
+        else:
+            event.Skip()
 
     def OnMouseMove(self, event):
         if event.Dragging() and event.LeftIsDown():
@@ -96,8 +108,11 @@ class SelectableFrame(wx.Frame):
     def OnMouseUp(self, event):
         self.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
         self.Destroy()
-
-        img = ImageGrab.grab(bbox=(c1x + c1x_delta, c1y + c1y_delta, c2x + c2x_delta, c2y +  c2y_delta))
+        bbox = [c1x + c1x_delta, c1y + c1y_delta, c2x + c2x_delta, c2y + c2y_delta]
+        for i in range(len(bbox)):
+            bbox[i] = bbox[i] * self.scale
+        bbox = tuple(bbox)
+        img = ImageGrab.grab(bbox=bbox)
         img.save("temp.png")
         clipboard_buffer = ""
         clipboard_buffer = render_doc_text("./temp.png", 0, clipboard_buffer)
@@ -155,9 +170,12 @@ def recognize_image(image_file, clipboard_buffer):
     global mode
 
     console_output = ""
-    table = Table(show_header=True, header_style='bold magenta')
+    table = Table(show_header=True, header_style='bold magenta', box=box.MINIMAL_DOUBLE_HEAD)
     table.add_column("日本語", style='dim')
     table.add_column(mode)
+    if mode == 'Vocab':
+        table.add_column('読み方')
+        table.add_column('意味')
     for page in document.pages:
         for block in track(page.blocks):
             results = []
@@ -196,11 +214,6 @@ def recognize_image(image_file, clipboard_buffer):
 
                 items = kks.convert(ocr_results)
 
-                # for item in items:
-                #     print(
-                #         "{}[{}] ".format(item["orig"], item["hepburn"].capitalize()), end=""
-                #     )
-                # print("\n")
                 hepburn_block = ""
                 for item in items:
                     hepburn_block = hepburn_block + " " + item["hepburn"]
@@ -209,6 +222,7 @@ def recognize_image(image_file, clipboard_buffer):
 
             if mode == 'Vocab':
                 tagger = Tagger('-Owakati')
+
                 nl_separated_block = []
                 for word in tagger(ocr_results):
                     if word.char_type == 2:
@@ -218,13 +232,14 @@ def recognize_image(image_file, clipboard_buffer):
                             meaning = meaning + '(' + str(entry.senses[0]).split('/')[0] + ')' + ' '
                         console_output = console_output + '\t'.join([str(word), '『' + word.feature.kana + '』', meaning, '\n'])
                         nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
+                        table.add_row(str(word), str(word.feature.lemma), '『' + word.feature.kana + '』', meaning )
                 hepburn_block = '\n'.join(nl_separated_block)
-                table.add_row(ocr_results, hepburn_block)
+                # table.add_row(ocr_results, hepburn_block)
 
             if mode == 'Google':
                 translator = Translator()
                 translated = translator.translate(ocr_results).text
-                table.add_row(ocr_results, translated)
+                table.add_row('\n'.join(textwrap.wrap(ocr_results, 25)), translated)
                 hepburn_block = "\n".join(textwrap.wrap(translated, 25))
 
             if mode == 'DeepL':
@@ -232,8 +247,8 @@ def recognize_image(image_file, clipboard_buffer):
                 response = requests.get(url, params={"auth_key": deepL_auth, "text": ocr_results, "target_lang": "EN"})
                 result = response.json()
                 translated = result['translations'][0]['text']
-                table.add_row(ocr_results, translated)
-                hepburn_block = "\n".join(textwrap.wrap(translated, 25))
+                table.add_row('\n'.join(textwrap.wrap(ocr_results, 25)) + '\n', translated)
+                hepburn_block = "\n".join(textwrap.wrap(translated, 40))
 
             nl_separated_block = hepburn_block.split("\n")
             max_x_bound = (
@@ -244,6 +259,7 @@ def recognize_image(image_file, clipboard_buffer):
             )
             w, h, = s.GetTextExtent(hepburn_block)
 
+            # modify this with dpi scale when screen device context is fixed
             s.DrawRectangle(
                 ss_x1 + start_x - 3, ss_y1 + start_y - 3, max_x_bound, max_y_bound
             )
