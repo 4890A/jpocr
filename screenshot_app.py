@@ -24,6 +24,7 @@ import requests
 from rich import print
 from rich.console import Console
 from rich.progress import track
+from rich.table import Column, Table
 console = Console()
 from rich import box
 from rich.style import Style
@@ -34,11 +35,18 @@ global mode
 mode = 'EOP'
 
 
-global selectionOffset, selectionSize, c1x, c2x, c1y, c2y
+global selectionOffset, selectionSize, c1x, c2x, c1y, c2y, c1x_delta, c2x_delta, c1y_delta, c2y_delta
 c1x = 0
 c2x = 0
 c1y = 0
 c2y = 0
+
+# offsets to account for selection window decorations
+c1x_delta = 0
+c2x_delta = 0
+c1y_delta = 28
+c2y_delta = 15
+
 
 selectionOffset = ""
 selectionSize = ""
@@ -52,6 +60,7 @@ class SelectableFrame(wx.Frame):
 
     def __init__(self, parent=None, id=wx.ID_ANY, title=""):
         wx.Frame.__init__(self, parent, id, title, size=wx.DisplaySize())
+        self.ShowFullScreen(True)
         self.menubar = wx.MenuBar(wx.MB_DOCKABLE)
         self.filem = wx.Menu()
         self.filem.Append(wx.ID_EXIT, "&Transparency")
@@ -88,7 +97,7 @@ class SelectableFrame(wx.Frame):
         self.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
         self.Destroy()
 
-        img = ImageGrab.grab(bbox=(c1x + 10, c1y + 35, c2x + 15, c2y + 50))
+        img = ImageGrab.grab(bbox=(c1x + c1x_delta, c1y + c1y_delta, c2x + c2x_delta, c2y +  c2y_delta))
         img.save("temp.png")
         clipboard_buffer = ""
         clipboard_buffer = render_doc_text("./temp.png", 0, clipboard_buffer)
@@ -139,14 +148,16 @@ def recognize_image(image_file, clipboard_buffer):
     texts = response.text_annotations
 
     s = wx.ScreenDC()
-    ss_x1 = c1x + 10
-    ss_x2 = c2x + 15
-    ss_y1 = c1y + 35
-    ss_y2 = c2y + 50
+    ss_x1 = c1x + c1x_delta
+    ss_x2 = c2x + c2x_delta
+    ss_y1 = c1y + c1y_delta
+    ss_y2 = c2y + c2y_delta
     global mode
 
     console_output = ""
-
+    table = Table(show_header=True, header_style='bold magenta')
+    table.add_column("日本語", style='dim')
+    table.add_column(mode)
     for page in document.pages:
         for block in track(page.blocks):
             results = []
@@ -178,21 +189,22 @@ def recognize_image(image_file, clipboard_buffer):
             )
 
             ocr_results = "".join(results[-1])
+
             clipboard_buffer = clipboard_buffer + ocr_results
             clipboard_buffer = clipboard_buffer + "\n"
             if mode == 'Romaji':
 
                 items = kks.convert(ocr_results)
 
-                for item in items:
-                    print(
-                        "{}[{}] ".format(item["orig"], item["hepburn"].capitalize()), end=""
-                    )
-                print("\n")
+                # for item in items:
+                #     print(
+                #         "{}[{}] ".format(item["orig"], item["hepburn"].capitalize()), end=""
+                #     )
+                # print("\n")
                 hepburn_block = ""
                 for item in items:
                     hepburn_block = hepburn_block + " " + item["hepburn"]
-
+                table.add_row(ocr_results, hepburn_block)
                 hepburn_block = "\n".join(textwrap.wrap(hepburn_block, 25))
 
             if mode == 'Vocab':
@@ -207,10 +219,12 @@ def recognize_image(image_file, clipboard_buffer):
                         console_output = console_output + '\t'.join([str(word), '『' + word.feature.kana + '』', meaning, '\n'])
                         nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
                 hepburn_block = '\n'.join(nl_separated_block)
+                table.add_row(ocr_results, hepburn_block)
 
             if mode == 'Google':
                 translator = Translator()
                 translated = translator.translate(ocr_results).text
+                table.add_row(ocr_results, translated)
                 hepburn_block = "\n".join(textwrap.wrap(translated, 25))
 
             if mode == 'DeepL':
@@ -218,6 +232,7 @@ def recognize_image(image_file, clipboard_buffer):
                 response = requests.get(url, params={"auth_key": deepL_auth, "text": ocr_results, "target_lang": "EN"})
                 result = response.json()
                 translated = result['translations'][0]['text']
+                table.add_row(ocr_results, translated)
                 hepburn_block = "\n".join(textwrap.wrap(translated, 25))
 
             nl_separated_block = hepburn_block.split("\n")
@@ -233,7 +248,7 @@ def recognize_image(image_file, clipboard_buffer):
                 ss_x1 + start_x - 3, ss_y1 + start_y - 3, max_x_bound, max_y_bound
             )
             s.DrawText(hepburn_block, ss_x1 + start_x, ss_y1 + start_y)
-    console.print(console_output, style='bold red')
+    console.print(table)
     return clipboard_buffer
 
 class screenshotApp(wx.App):
@@ -244,19 +259,6 @@ class screenshotApp(wx.App):
 def render_doc_text(filein, fileout, clipboard_buffer):
     image = Image.open(filein)
     return recognize_image(filein, clipboard_buffer)
-
-def spawn_ocr_main_process():
-    global mode
-    p = Process(target=ocr_multiprocess, args=('EOP',))
-    p.start()
-    p.join()
-
-def ocr_multiprocess(mode_main_process):
-    global mode
-    mode = mode_main_process
-    app = screenshotApp(redirect=False)
-    app.MainLoop()
-    time.sleep(10)
 
 
 def ocr_main(window_mode):
