@@ -31,9 +31,6 @@ lazy-object-proxy==1.4.3
 lxml==4.5.2
 matplotlib==3.2.2
 mccabe==0.6.1
-mkl-fft==1.1.0
-mkl-random==1.1.1
-mkl-service==2.3.0
 networkx==2.4
 opencv-python==4.3.0.36
 Pillow==7.2.0
