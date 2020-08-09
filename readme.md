@@ -13,7 +13,7 @@ Output results to your terminal, or directly onto the screen (Windows only). The
 ![](terminal_example.png)
 ## Usage
 
-Run `yomitoru.py` and select the mode. Hit scan and select region to transcribe
+Run `yomitoru.py` and select the mode. Hit scan and select a region to transcribe.
 
 ## Installation
 
