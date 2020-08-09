@@ -32,7 +32,7 @@ Run `yomitoru.py` and select the mode. Hit scan and select a region to transcrib
 4. Install the other python dependencies in the requirements.txt
 
    	* `pip install -r requirements.txt`
-      	* download the necessary dictionaries for [pykakasi](https://github.com/miurahr/pykakasi) and [jamdict](https://github.com/neocl/jamdict) 
+      	* download the necessary dictionaries for [fugashi](https://github.com/polm/fugashi) and [jamdict](https://github.com/neocl/jamdict) 
 
 5. Configure yomitoru
 
