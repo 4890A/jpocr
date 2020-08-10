@@ -1,25 +1,19 @@
 import io
 import textwrap
-import time
-from multiprocessing import Process
-from secrets import deepL_auth
-
+import requests
 import wx
+import pyperclip
 from PIL import Image, ImageGrab
-
-import pykakasi
-kks = pykakasi.kakasi()
-
-from jamdict import Jamdict
-jmd = Jamdict()
-from fugashi import Tagger
 
 from googletrans import Translator
 from google.cloud import vision
 from google.cloud.vision import types
+from secrets import deepL_auth
 
-import pyperclip
-import requests
+from jamdict import Jamdict
+jmd = Jamdict()
+from fugashi import Tagger
+import cutlet
 
 from rich import print
 from rich.console import Console
@@ -27,7 +21,6 @@ from rich.progress import track
 from rich.table import Column, Table
 console = Console()
 from rich import box
-from rich.style import Style
 
 
 
@@ -211,12 +204,8 @@ def recognize_image(image_file, clipboard_buffer):
             clipboard_buffer = clipboard_buffer + ocr_results
             clipboard_buffer = clipboard_buffer + "\n"
             if mode == 'Romaji':
-
-                items = kks.convert(ocr_results)
-
-                hepburn_block = ""
-                for item in items:
-                    hepburn_block = hepburn_block + " " + item["hepburn"]
+                katsu = cutlet.Cutlet()
+                hepburn_block =  katsu.romaji(ocr_results)
                 table.add_row(ocr_results, hepburn_block)
                 hepburn_block = "\n".join(textwrap.wrap(hepburn_block, 25))
 
