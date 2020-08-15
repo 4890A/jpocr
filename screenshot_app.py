@@ -101,7 +101,11 @@ class SelectableFrame(wx.Frame):
     def OnMouseUp(self, event):
         self.SetCursor(wx.Cursor(wx.CURSOR_ARROW))
         self.Destroy()
-        bbox = [c1x + c1x_delta, c1y + c1y_delta, c2x + c2x_delta, c2y + c2y_delta]
+        left_x = min(c1x, c2x)
+        right_x = max(c1x, c2x)
+        left_y = min(c1y, c2y)
+        right_y = max(c1y, c2y)
+        bbox = [left_x + c1x_delta, left_y + c1y_delta, right_x + c2x_delta, right_y + c2y_delta]
         for i in range(len(bbox)):
             bbox[i] = bbox[i] * self.scale
         bbox = tuple(bbox)
