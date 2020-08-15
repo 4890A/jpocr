@@ -215,10 +215,13 @@ def recognize_image(image_file, clipboard_buffer):
                 nl_separated_block = []
                 for word in tagger(ocr_results):
                     if word.char_type == 2:
-                        result = jmd.lookup(str(word.feature.lemma))
-                        meaning = ''
-                        for entry in result.entries:
-                            meaning = meaning + '(' + str(entry.senses[0]).split('/')[0] + ')' + ' '
+                        results = jmd.lookup(str(word.feature.lemma))
+                        meaning = ' '
+                        for k in range(len(results.entries)):
+                            result = results.entries[k]
+                            if k > 0:
+                                meaning =  meaning + '\n '
+                            meaning = meaning +  str(k + 1) + '.' + ' \\ '.join([str(sense.gloss[0]) for sense in result.senses])
                         console_output = console_output + '\t'.join([str(word), '『' + word.feature.kana + '』', meaning, '\n'])
                         nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
                         table.add_row(str(word), str(word.feature.lemma), '『' + word.feature.kana + '』', meaning )
