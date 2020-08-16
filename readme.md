@@ -21,12 +21,14 @@ Run `yomitoru.py` and select the mode. Hit scan and select a region to transcrib
 
 2. Set the environment variable`GOOGLE_APPLICATION_CREDENTIALS` to the path of your service account key
 
-3. Install wxPython 4.1.0
+3. Install wxPython > 4
 
    * `pip install wxPython` on windows and mac. macOS may also require running with `pythonw` (python.app) 
 
-   * on linux `pip` will attempt to build wxPython. Binaries can be found [here](https://extras.wxpython.org/wxPython4/extras/linux/), you may need to install some missing libraries
+   * on linux `pip` will attempt to build wxPython. Check your distribution's package repositories for wxPython binaries.  Binaries can also be found [here](https://extras.wxpython.org/wxPython4/extras/linux/). After installing from a binary you may still need to install some missing libraries.
 
+     * Ensure your desktop environment supports transparency through a compositor.
+     
      
 
 4. Install the other python dependencies in the requirements.txt
@@ -47,4 +49,3 @@ Run `yomitoru.py` and select the mode. Hit scan and select a region to transcrib
      c2y_delta = 15
      ```
 
-     

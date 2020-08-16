@@ -11,6 +11,7 @@ from google.cloud.vision import types
 from secrets import deepL_auth
 
 from jamdict import Jamdict
+
 jmd = Jamdict()
 from fugashi import Tagger
 import cutlet
@@ -19,16 +20,19 @@ from rich import print
 from rich.console import Console
 from rich.progress import track
 from rich.table import Column, Table
+
 console = Console()
 from rich import box
 
 
-
 global mode
-mode = 'EOP'
+mode = "EOP"
+
+global screen
+screen = 0
 
 
-global selectionOffset, selectionSize, c1x, c2x, c1y, c2y, c1x_delta, c2x_delta, c1y_delta, c2y_delta
+# global selectionOffset, selectionSize, c1x, c2x, c1y, c2y, c1x_delta, c2x_delta, c1y_delta, c2y_delta
 c1x = 0
 c2x = 0
 c1y = 0
@@ -46,14 +50,34 @@ selectionSize = ""
 
 clipboard_buffer = ""
 
+
 class SelectableFrame(wx.Frame):
 
     c1 = None
     c2 = None
 
     def __init__(self, parent=None, id=wx.ID_ANY, title=""):
-        wx.Frame.__init__(self, parent, id, title, size=wx.DisplaySize())
+
+        geo = wx.Display(screen).GetGeometry()
+        wx.Frame.__init__(self, parent, id, title, size=geo.GetSize())
+        self.SetPosition(geo.GetTopLeft())
+        global c1x_delta
+        global c1y_delta
+        global c2x_delta
+        global c2y_delta
+
+        c1x_delta = 0
+        c2x_delta = 0
+        c1y_delta = 28
+        c2y_delta = 15
+
+        c1x_delta += geo.GetTopLeft().Get()[0]
+        c1y_delta += geo.GetTopLeft().Get()[1]
+        c2x_delta += geo.GetTopLeft().Get()[0]
+        c2y_delta += geo.GetTopLeft().Get()[1]
+
         self.ShowFullScreen(True)
+
         self.menubar = wx.MenuBar(wx.MB_DOCKABLE)
         self.filem = wx.Menu()
         self.filem.Append(wx.ID_EXIT, "&Transparency")
@@ -105,16 +129,21 @@ class SelectableFrame(wx.Frame):
         right_x = max(c1x, c2x)
         left_y = min(c1y, c2y)
         right_y = max(c1y, c2y)
-        bbox = [left_x + c1x_delta, left_y + c1y_delta, right_x + c2x_delta, right_y + c2y_delta]
+        bbox = [
+            left_x + c1x_delta,
+            left_y + c1y_delta,
+            right_x + c2x_delta,
+            right_y + c2y_delta,
+        ]
         for i in range(len(bbox)):
             bbox[i] = bbox[i] * self.scale
         bbox = tuple(bbox)
-        img = ImageGrab.grab(bbox=bbox)
+        print(bbox)
+        img = ImageGrab.grab(bbox=bbox, all_screens=True)
         img.save("temp.png")
         clipboard_buffer = ""
         clipboard_buffer = render_doc_text("./temp.png", 0, clipboard_buffer)
         pyperclip.copy(clipboard_buffer)
-
 
     def OnPaint(self, event):
         global selectionOffset, selectionSize
@@ -139,16 +168,13 @@ class SelectableFrame(wx.Frame):
             str(abs(self.c2.x - self.c1.x)) + "x" + str(abs(self.c2.y - self.c1.y))
         )
 
-
     def PrintPosition(self, pos):
         return str(pos.x) + "x" + str(pos.y)
-
 
 
 def recognize_image(image_file, clipboard_buffer):
     """Returns document bounds given an image."""
     client = vision.ImageAnnotatorClient()
-
 
     with io.open(image_file, "rb") as image_file:
         content = image_file.read()
@@ -167,12 +193,14 @@ def recognize_image(image_file, clipboard_buffer):
     global mode
 
     console_output = ""
-    table = Table(show_header=True, header_style='bold magenta', box=box.MINIMAL_DOUBLE_HEAD)
-    table.add_column("日本語", style='dim')
+    table = Table(
+        show_header=True, header_style="bold magenta", box=box.MINIMAL_DOUBLE_HEAD
+    )
+    table.add_column("日本語", style="dim")
     table.add_column(mode)
-    if mode == 'Vocab':
-        table.add_column('読み方')
-        table.add_column('意味')
+    if mode == "Vocab":
+        table.add_column("読み方")
+        table.add_column("意味")
     for page in document.pages:
         for block in track(page.blocks):
             results = []
@@ -207,43 +235,79 @@ def recognize_image(image_file, clipboard_buffer):
 
             clipboard_buffer = clipboard_buffer + ocr_results
             clipboard_buffer = clipboard_buffer + "\n"
-            if mode == 'Romaji':
+            if mode == "Romaji":
                 katsu = cutlet.Cutlet()
-                hepburn_block =  katsu.romaji(ocr_results)
+                hepburn_block = katsu.romaji(ocr_results)
                 table.add_row(ocr_results, hepburn_block)
                 hepburn_block = "\n".join(textwrap.wrap(hepburn_block, 25))
 
-            if mode == 'Vocab':
-                tagger = Tagger('-Owakati')
+            if mode == "Vocab":
+                tagger = Tagger("-Owakati")
 
                 nl_separated_block = []
                 for word in tagger(ocr_results):
                     if word.char_type == 2:
                         results = jmd.lookup(str(word.feature.lemma))
-                        meaning = ' '
+                        meaning = " "
                         for k in range(len(results.entries)):
                             result = results.entries[k]
                             if k > 0:
-                                meaning =  meaning + '\n '
-                            meaning = meaning +  str(k + 1) + '.' + ' \\ '.join([str(sense.gloss[0]) for sense in result.senses])
-                        console_output = console_output + '\t'.join([str(word), '『' + word.feature.kana + '』', meaning, '\n'])
-                        nl_separated_block.append('\t'.join([str(word), '『' + word.feature.kana + '』', meaning]))
-                        table.add_row(str(word), str(word.feature.lemma), '『' + word.feature.kana + '』', meaning )
-                hepburn_block = '\n'.join(nl_separated_block)
+                                meaning = meaning + "\n "
+                            meaning = (
+                                meaning
+                                + str(k + 1)
+                                + "."
+                                + " \\ ".join(
+                                    [str(sense.gloss[0]) for sense in result.senses]
+                                )
+                            )
+                        console_output = console_output + "\t".join(
+                            [
+                                str(word),
+                                "『" + str(word.feature.kana) + "』",
+                                str(meaning),
+                                "\n",
+                            ]
+                        )
+                        nl_separated_block.append(
+                            "\t".join(
+                                [
+                                    str(word),
+                                    "『" + str(word.feature.kana) + "』",
+                                    str(meaning),
+                                ]
+                            )
+                        )
+                        table.add_row(
+                            str(word),
+                            str(word.feature.lemma),
+                            "『" + str(word.feature.kana) + "』",
+                            str(meaning),
+                        )
+                hepburn_block = "\n".join(nl_separated_block)
                 # table.add_row(ocr_results, hepburn_block)
 
-            if mode == 'Google':
+            if mode == "Google":
                 translator = Translator()
                 translated = translator.translate(ocr_results).text
-                table.add_row('\n'.join(textwrap.wrap(ocr_results, 25)), translated)
+                table.add_row("\n".join(textwrap.wrap(ocr_results, 25)), translated)
                 hepburn_block = "\n".join(textwrap.wrap(translated, 25))
 
-            if mode == 'DeepL':
-                url = 'https://api.deepl.com/v2/translate'
-                response = requests.get(url, params={"auth_key": deepL_auth, "text": ocr_results, "target_lang": "EN"})
+            if mode == "DeepL":
+                url = "https://api.deepl.com/v2/translate"
+                response = requests.get(
+                    url,
+                    params={
+                        "auth_key": deepL_auth,
+                        "text": ocr_results,
+                        "target_lang": "EN",
+                    },
+                )
                 result = response.json()
-                translated = result['translations'][0]['text']
-                table.add_row('\n'.join(textwrap.wrap(ocr_results, 25)) + '\n', translated)
+                translated = result["translations"][0]["text"]
+                table.add_row(
+                    "\n".join(textwrap.wrap(ocr_results, 25)) + "\n", translated
+                )
                 hepburn_block = "\n".join(textwrap.wrap(translated, 40))
 
             nl_separated_block = hepburn_block.split("\n")
@@ -263,17 +327,21 @@ def recognize_image(image_file, clipboard_buffer):
     console.print(table)
     return clipboard_buffer
 
+
 class screenshotApp(wx.App):
     def OnInit(self):
         frame = SelectableFrame()
         return True
+
 
 def render_doc_text(filein, fileout, clipboard_buffer):
     image = Image.open(filein)
     return recognize_image(filein, clipboard_buffer)
 
 
-def ocr_main(window_mode):
+def ocr_main(window_mode, screen_selection):
     global mode
     mode = window_mode
+    global screen
+    screen = screen_selection
     ssframe = SelectableFrame()
