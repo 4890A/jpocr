@@ -138,7 +138,6 @@ class SelectableFrame(wx.Frame):
         for i in range(len(bbox)):
             bbox[i] = bbox[i] * self.scale
         bbox = tuple(bbox)
-        print(bbox)
         img = ImageGrab.grab(bbox=bbox, all_screens=True)
         img.save("temp.png")
         clipboard_buffer = ""
@@ -255,8 +254,7 @@ def recognize_image(image_file, clipboard_buffer):
                                 meaning = meaning + "\n "
                             meaning = (
                                 meaning
-                                + str(k + 1)
-                                + "."
+                                + f"[bold red]{str(k + 1)}. [/bold red]"
                                 + " \\ ".join(
                                     [str(sense.gloss[0]) for sense in result.senses]
                                 )
